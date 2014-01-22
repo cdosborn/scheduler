@@ -1,11 +1,32 @@
+var _employees = [];
 var _employeeRecord = [];
 var _totalHours = 0;
 var _solutions = [];
+
+function Employee(attr, _index){
+    this._index = _index;
+    this.name = attr['name'];
+    this.canOpen = attr['canOpen'];
+    this.minHours = attr['minHours'];
+    this.maxHours = attr['maxHours'];
+    this.schedule = attr['schedule'];
+    this.working = 0;
+    this.update = function() {
+        var attr = fetch("src/employees.json")[this._index];
+        this.name = attr['name'];
+        this.canOpen = attr['canOpen'];
+        this.minHours = attr['minHours'];
+        this.maxHours = attr['maxHours'];
+        this.schedule = attr['schedule'];
+    };
+}
+
 function fetch(url){ 
     var data =  $.ajax({ type: 'GET', url: url, dataType: 'json', async: false });
     return data.responseJSON;
 }
 
+//perhaps rename to assignShifts
 function makeShifts(list, employees){
     var queue = [];
     for(var i = 0; i < list.length - 1; i++){
@@ -22,6 +43,31 @@ function makeShifts(list, employees){
     return queue;
 }
 
+
+//sorts and returns unique shift divisions already bounded by the store's opening and closing
+function uniqueShiftList(employees, store){
+    var shifts = [[],[],[],[],[],[],[]];
+    for (var day = 0; day < 7; day++) {
+       for (var person = 0; person < employees.length; person++) { 
+           //flatten multiple shifts for a person in a day
+           employees[person].schedule[day] = _.flatten(employees[person].schedule[day]);
+           for (var part = 0; part < employees[person].schedule[day].length; part++) {
+               var scale = day * 24 * 60;
+               var time = employees[person].schedule[day][part] + scale;
+               var storeOpen = store.schedule[day][0] + scale;
+               var storeClose = store.schedule[day][1] + scale;
+               if (time > storeOpen && time < storeClose) 
+                    shifts[day].push(time);
+               shifts[day].push(storeOpen);
+               shifts[day].push(storeClose);
+           }
+       }
+    }
+    
+    //document/refactor
+    return _.map(shifts, function(list){ return _.uniq(list.sort(function(a,b){return a - b;}), true);});
+}  
+
 function overlap(shift, employee) {
     var avg = (shift.start + shift.end)/2;
     var day = Math.floor(shift.start / ( 60 * 24));
@@ -35,6 +81,7 @@ function overlap(shift, employee) {
     }
     return false;
 }
+
 function getIndexOfName(list, name){
     for (var i = 0; i < list.length; i++) {
         if (list[i].name == name)
@@ -75,36 +122,19 @@ function schedule(queue, employees, index, solutions) {
     console.log("welcome to scheduler");
     var employees = fetch("src/employees.json");
     var store = fetch("src/store.json");
-    var shifts = [[],[],[],[],[],[],[]];
-    for (var day = 0; day < 7; day++) {
-       for (var person = 0; person < employees.length; person++) { 
-           //flatten multiple shifts for a person in a day
-           employees[person].schedule[day] = _.flatten(employees[person].schedule[day]);
-           for (var part = 0; part < employees[person].schedule[day].length; part++) {
-               var scale = day * 24 * 60;
-               var time = employees[person].schedule[day][part] + scale;
-               var storeOpen = store.schedule[day][0] + scale;
-               var storeClose = store.schedule[day][1] + scale;
-               if (time > storeOpen && time < storeClose) 
-                    shifts[day].push(time);
-               shifts[day].push(storeOpen);
-               shifts[day].push(storeClose);
-           }
-       }
-    }
+    var shifts = uniqueShiftList(employees, store);
 
-    //sorts and returns unique shift divisions already bounded by the store's opening and closing
-    shifts = _.map(shifts, function(list){ return _.uniq(list.sort(function(a,b){return a - b;}), true);});
     //build queue of shift objects
-
     var queue = _.map(shifts, function(list){ return makeShifts(list,employees);})
     queue = _.sortBy(_.flatten(queue), function(data) { return data.employees.length;});
 
-    for (var person = 0; person < employees.length; person++) {
-            employees[person]["working"] = 0;
+    //initialize employees
+    for (var i = 0; i < employees.length; i++) {
+            _employees.push(new Employee(employees[i],i));
     } 
 
-    solutions = schedule(queue,employees, 0, []);
+
+    solutions = schedule(queue,_employees, 0, []);
     console.log(_employeeRecord);
     console.log(_solutions);
     for(var i = 0; i < _employeeRecord.length; i++) {
