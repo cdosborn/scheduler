@@ -1,4 +1,3 @@
-var _employees = [];
 var _employeeRecord = [];
 var _totalHours = 0;
 var _solutions = [];
@@ -35,9 +34,8 @@ function makeShifts(list, employees){
         hours = (end - start) / 60; 
         queue[i] = {'start':start,'end':end, 'employees':[], 'hours':hours};
         for(var j = 0; j < employees.length; j++){
-            var name = employees[j].name;
             if (overlap(queue[i], employees[j]))
-                queue[i]['employees'].push(name);
+                queue[i]['employees'].push(j);
         }
     }
     return queue;
@@ -46,6 +44,8 @@ function makeShifts(list, employees){
 
 //sorts and returns unique shift divisions already bounded by the store's opening and closing
 function uniqueShiftList(employees, store){
+    console.log("ASFDFDSF");
+    console.log(employees);
     var shifts = [[],[],[],[],[],[],[]];
     for (var day = 0; day < 7; day++) {
        for (var person = 0; person < employees.length; person++) { 
@@ -92,50 +92,58 @@ function getIndexOfName(list, name){
 
 function schedule(queue, employees, index, solutions) {
     if (index == queue.length) {
-        _employeeRecord = employees;
         _solutions.push(solutions);
         return solutions;
     }
-
     var shift = queue[index];
-    
-    for (var i = 0; i < shift.employees.length; i++) { 
-            //if employee can take hours add him
-            if (employees[i]['working'] + shift.hours <= employees[i]['maxHours']) {
-                var copySol = solutions.slice(0);
-                var copyEmp = employees.slice(0);
-                var copyQue = queue.slice(0);
-                copySol.push(shift); 
-                copyQue[index]['scheduled'] = shift.employees[i];
-                copyEmp[i]['working'] += shift.hours;
-                schedule(copyQue, copyEmp, index + 1, copySol);
-            } else { 
-                console.log(employees[i]['name'] + " could not work: " + shift.hours);
-                console.log("they are at: " + employees[i]['working'] + " with max: " + employees[i].maxHours);
-            } 
-    }
-
-    return solutions;
+//  if (shift.employees.length == 0) {
+//      schedule(queue, employees, index + 1, solutions);
+//  } else {
+        for (var i = 0; i < shift.employees.length; i++) { 
+                //if employee can take hours add him
+                var employee = shift.employees[i];
+                if (employees[employee]['working'] + shift.hours <= employees[employee]['maxHours'] && employees[employee]['canOpen'] == true) {
+                    var copySol = solutions.slice(0);
+                    var copyEmp = employees.slice(0);
+                    var copyQue = queue.slice(0);
+                    copySol.push(shift); 
+                    copyQue[index]['scheduled'] = employees[employee].name;
+                    copyEmp[employee]['working'] += shift.hours;
+                    schedule(copyQue, copyEmp, index + 1, copySol);
+                } else { 
+                    console.log(employees[employee]['name'] + " could not work: " + shift.hours);
+                    console.log("they are at: " + employees[employee]['working'] + " with max: " + employees[employee].maxHours);
+                } 
+        }
+//      if (index < queue.length)
+//          schedule(queue,employees,index + 1, solutions);
+//  }
 }
 
-(function(){
+
     console.log("welcome to scheduler");
-    var employees = fetch("src/employees.json");
-    var store = fetch("src/store.json");
+    var _employees = {};
+    var employees = fetch("js/src/employees.json");
+    var store = fetch("js/src/store.json");
     var shifts = uniqueShiftList(employees, store);
+    console.log("shifts " + shifts);
 
     //build queue of shift objects
     var queue = _.map(shifts, function(list){ return makeShifts(list,employees);})
     queue = _.sortBy(_.flatten(queue), function(data) { return data.employees.length;});
 
+    console.log("queue " + queue);
+
     //initialize employees
     for (var i = 0; i < employees.length; i++) {
-            _employees.push(new Employee(employees[i],i));
+            _employees[employees[i].name + ''] = new Employee(employees[i],i);
+            employees[i]['working'] = 0;
     } 
 
 
-    solutions = schedule(queue,_employees, 0, []);
-    console.log(_employeeRecord);
+    solutions = schedule(queue,employees, 0, []);
+//  console.log(_employeeRecord);
+    console.log("solutions " + solutions);
     console.log(_solutions);
     for(var i = 0; i < _employeeRecord.length; i++) {
 
@@ -143,4 +151,3 @@ function schedule(queue, employees, index, solutions) {
     }
     console.log("Total Hours: " + _totalHours);
     console.log("Minimum Coverage: " + store.maxHours);
-})();
