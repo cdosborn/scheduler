@@ -1,0 +1,13 @@
+html{
+          overflow : hidden;
+              height:100%;
+                  width:100%;
+}
+#schedule {
+        height: 100%;
+}
+
+body {
+    padding-top: 50px; 
+
+}
