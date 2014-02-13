@@ -5,4 +5,4 @@ Scheduler is a small employee scheduler built in 24 hours! I implemented the con
 
 Download the source, open the index file in a browser and click next to see a generated schedule.
 
-Note* Employee availability data is currently hardcoded into the application in the Employees.json file. 
+Note* Employee availability data is currently hardcoded into the application in the js/src/Employees.json file. 
